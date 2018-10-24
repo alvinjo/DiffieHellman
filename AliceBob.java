@@ -1,5 +1,6 @@
 package DiffieHellman;
 
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 
@@ -9,6 +10,7 @@ public class AliceBob implements Runnable{
     double finalKey;
     int type = 1;
     String ID;
+    PrimRootFinder prf = new PrimRootFinder();
 
 
     public AliceBob(String ID, KeyExchange exchange){
@@ -22,12 +24,11 @@ public class AliceBob implements Runnable{
             if(exchange.pgIsNull()){
                 System.out.println(ID + " is setting p and g values");
 
-                int q = generatePrime();
-                int p=6;
-                while(!isPrime(p)){
-                    p = q * new Random().nextInt(10) + 1;
-                }
-                double g = new Random().nextInt(10)%p;
+                int p = generatePrime();
+                System.out.println("prime " + p);
+                ArrayList<Integer> primRoots = new PrimRootFinder().getPrimitiveRoots(p);
+                System.out.println("primroot size " + primRoots.size());
+                int g = primRoots.get(new Random().nextInt(primRoots.size()));
 
                 exchange.setPG(p, g);
                 type = 0; //ALICE
@@ -67,11 +68,17 @@ public class AliceBob implements Runnable{
         System.out.println(ID + " secretnum:" + secretNum);
         if(type == 0){
             System.out.println(exchange.getG() + "^" + secretNum + " %" + exchange.getP());
-            exchange.setAlicePreKey(Math.pow(exchange.getG(),secretNum)%exchange.getP());
+
+            exchange.setAlicePreKey(prf.performModPow(exchange.getG(), secretNum, exchange.getP()).intValue());
+
+
+
             System.out.println("Alice prekey:" + exchange.getAlicePreKey());
         }else{
-            System.out.println(exchange.getG() + "^" + secretNum + " %" + exchange.getP());
-            exchange.setBobPreKey(Math.pow(exchange.getG(), secretNum)%exchange.getP());
+            System.out.println(exchange.getG() + "^" + secretNum + " % " + exchange.getP());
+
+            exchange.setBobPreKey(prf.performModPow(exchange.getG(), secretNum, exchange.getP()).intValue());
+
             System.out.println("Bob prekey:" + exchange.getBobPrekey());
         }
     }
@@ -80,10 +87,13 @@ public class AliceBob implements Runnable{
     public double computeFinalKey(){
         if(type == 0){
             System.out.println(ID + " bPreKey:" + exchange.getBobPrekey() + " secretnum:" + secretNum + " p:" + exchange.getP());
-            return Math.pow(exchange.getBobPrekey(), secretNum)%exchange.getP();
+            System.out.println(ID + " finalkey: " + exchange.getBobPrekey() + "^" + secretNum + " % " + exchange.getP());
+            return prf.performModPow(exchange.getBobPrekey(), secretNum, exchange.getP()).intValue();
+
         }else{
             System.out.println(ID + " aPreKey:" + exchange.getAlicePreKey() + " secretnum:" + secretNum + " p:" + exchange.getP());
-            return Math.pow(exchange.getAlicePreKey(), secretNum)%exchange.getP();
+            System.out.println(ID + " finalkey: " + exchange.getAlicePreKey() + "^" + secretNum + " % " + exchange.getP());
+            return prf.performModPow(exchange.getAlicePreKey(), secretNum, exchange.getP()).intValue();
         }
     }
 
@@ -92,7 +102,7 @@ public class AliceBob implements Runnable{
         Random random = new Random();
         int prime = 6;
         while(!isPrime(prime)){
-            prime = random.nextInt(50);
+            prime = random.nextInt(1000000)+3;
         }
         return prime;
     }
@@ -104,5 +114,6 @@ public class AliceBob implements Runnable{
         }
         return true;
     }
-    
+
 }
+
